@@ -3,6 +3,8 @@
 This library defines functions for creating streams and performing input and output operations on them. 
 A stream is a fairly abstract data type defined by [datum](https://github.com/fogfish/datum/blob/master/src/stream/stream.erl) library - streams are a sequential data structures that contains on demand computed elements. Here, a fairly abstract stream definition is used to represent a communications channel to a file, device, or process. This library is inspired by [GNU Input/Output on Streams](https://www.gnu.org/software/libc/manual/html_node/I_002fO-on-Streams.html).
 
+[![Build Status](https://secure.travis-ci.org/fogfish/stdio.svg?branch=master)](http://travis-ci.org/fogfish/stdio)
+[![Coverage Status](https://coveralls.io/repos/github/fogfish/stdio/badge.svg?branch=master)](https://coveralls.io/github/fogfish/stdio?branch=master)
 
 ## Key features
 
