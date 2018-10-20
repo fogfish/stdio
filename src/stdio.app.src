@@ -1,0 +1,14 @@
+{application, stdio,
+   [
+      {description, "Standard Input/Output on Streams"},
+      {vsn,         "0.0.0"},
+      {modules,     []},
+      {registered,  []},
+      {applications,[
+         kernel,
+         stdlib,
+         datum
+      ]},
+      {env, []}
+   ]
+}.
