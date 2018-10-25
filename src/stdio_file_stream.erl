@@ -16,147 +16,46 @@
 %% @doc
 %%   append only file
 -module(stdio_file_stream).
+
 -compile({parse_transform, category}).
 -include_lib("datum/include/datum.hrl").
+-include("stdio.hrl").
 
 -export([
-   forward/2,
+   new/2,
+   free/1,
+   sync/1,
+   read/2,
+   write/2,
    forward/1,
-   reverse/2,
-   reverse/1,
-   close/1,
-   send/2,
-   snapshot/1
+   reverse/1
 ]).
 
 -record(sfd, {
    fd    = undefined :: _,   %% file descriptor
    chunk = undefined :: _,   %% stream chunk (unit of work)
    size  = undefined :: _,   %% size of stream in bytes
-   at    = undefined :: _    %% 
+   at    = undefined :: _    %% stream position
 }).
 
 
 %%
 %%
--spec forward( stdio:filename(), file:mode() ) -> datum:either( stdio:stream() ).
+-spec new(stdio:filename(), file:mode()) -> datum:either( stdio:iostream() ).
 
-forward(File, Opts) ->
+new(File, Opts) ->
    [either ||
       file:open(File, [raw, read, append, binary | allowed_opts(Opts)]),
       cats:unit(
-         forward(
-            #sfd{
-               fd    = _, 
-               chunk = lens:get(lens:pair(read_ahead), Opts),
-               size  = filelib:file_size(File),
-               at    = 0
+         #iostream{
+            module = ?MODULE, 
+            fd     = #sfd{
+               fd    = _,
+               size  = filelib:file_size(File)
             }
-         )
+         }
       )
    ].
-
-forward(#sfd{fd = FD, chunk = Chunk, at = At} = Stream) ->
-   case file:pread(FD, At, Chunk) of
-      {ok, Head} ->
-         stream:new(Head, {?MODULE, forward, Stream#sfd{at = At + Chunk}});
-      eof  ->
-         stream:new(undefined, {?MODULE, forward, Stream});
-      {error, Reason} ->
-         file:close(FD),
-         exit(Reason)
-   end.
-
-
-%%
-%%
--spec reverse( stdio:filename(), file:mode() ) -> datum:either( stdio:stream() ).
-
-reverse(File, Opts) ->
-   [either ||
-      file:open(File, [raw, read, append, binary | allowed_opts(Opts)]),
-      cats:unit(
-         reverse(
-            #sfd{
-               fd    = _, 
-               chunk = lens:get(lens:pair(read_ahead), Opts),
-               size  = filelib:file_size(File),
-               at    = filelib:file_size(File)
-            }
-         )
-      )
-   ].
-
-reverse(#sfd{at = 0} = Stream) ->
-   stream:new(undefined, {?MODULE, reverse, Stream});
-
-reverse(#sfd{fd = FD, chunk = Chunk, at = At} = Stream) ->
-   case file:pread(FD, At - Chunk, Chunk) of
-      {ok, Head} ->
-         stream:new(Head, {?MODULE, reverse, Stream#sfd{at = At - Chunk}});
-      eof  ->
-         stream:new(undefined, {?MODULE, reverse, Stream});
-      {error, Reason} ->
-         file:close(FD),
-         exit(Reason)
-   end.
-
-%%
-%%
--spec close(stdio:stream()) -> datum:either().
-
-close(#stream{tail = {?MODULE, _, #sfd{fd = FD}}}) ->
-   file:close(FD).
-
-%%
-%%
--spec send(binary(), stdio:stream()) -> datum:either().
-
-send(Data, #stream{tail = {?MODULE, IO, #sfd{fd = FD, size = Size} = File}} = Stream) ->
-   case file:write(FD, Data) of
-      ok ->
-         Stream#stream{tail = {?MODULE, IO, File#sfd{size = Size + size(Data)}}};
-      {error, Reason} ->
-         exit(Reason)
-   end.
-
-%%
-%%
--spec snapshot(stdio:stream()) -> stdio:stream().
-
-snapshot(#stream{tail = {?MODULE, forward, #sfd{} = File}}) ->
-   stream:unfold(fun snapshot_forward/1, File#sfd{at = 0});
-
-snapshot(#stream{tail = {?MODULE, reverse, #sfd{size = Size} = File}}) ->
-   stream:unfold(fun snapshot_reverse/1, File#sfd{at = Size}).
-
-
-snapshot_forward(#sfd{size = Size, at = At})
- when At >= Size ->
-   ?None;
-
-snapshot_forward(#sfd{fd = FD, chunk = Chunk, at = At} = File) ->
-   case file:pread(FD, At, Chunk) of
-      {ok, Head} ->
-         {Head, File#sfd{at = At + Chunk}};
-      eof ->
-         ?None;
-      {error, Reason} ->
-         exit(Reason)
-   end.
-
-snapshot_reverse(#sfd{at = 0}) ->
-   ?None;
-   
-snapshot_reverse(#sfd{fd = FD, chunk = Chunk, at = At} = File) ->
-   case file:pread(FD, At - Chunk, Chunk) of
-      {ok, Head} ->
-         {Head, File#sfd{at = At - Chunk}};
-      eof ->
-         ?None;
-      {error, Reason} ->
-         exit(Reason)
-   end.
 
 %%
 %%
@@ -167,3 +66,71 @@ is_allowed({delayed_write, _, _}) -> true;
 is_allowed({read_ahead, _}) -> true;
 is_allowed(_) -> false.
 
+
+%%
+%%
+-spec free(#sfd{}) -> datum:either().
+
+free(#sfd{fd = FD}) ->
+   file:close(FD).
+
+%%
+%%
+-spec sync(#sfd{}) -> datum:either().
+
+sync(#sfd{fd = FD}) ->
+   file:sync(FD).
+
+
+%%
+%%
+-spec read({forward | reverse, integer()} | undefined, #sfd{}) -> stdio:stream().
+
+read(undefined, #sfd{} = FD) ->
+   forward(1, FD);
+read({forward, Chunk}, #sfd{} = FD) ->
+   forward(Chunk, FD);
+read({reverse, Chunk}, #sfd{} = FD) ->
+   reverse(Chunk, FD).
+
+
+forward(Chunk, #sfd{} = FD) ->
+   forward(FD#sfd{chunk = Chunk, at = 0}).
+
+forward(#sfd{fd = FD, chunk = Chunk, at = At} = Stream) ->
+   case file:pread(FD, At, Chunk) of
+      {ok, Head} ->
+         stream:new(Head, {?MODULE, forward, Stream#sfd{at = At + Chunk}});
+      eof  ->
+         stream:new();
+      {error, Reason} ->
+         exit(Reason)
+   end.
+
+
+reverse(Chunk, #sfd{size = Size} = FD) ->
+   reverse(FD#sfd{chunk = Chunk, at = Size}).
+
+reverse(#sfd{at = 0}) ->
+   stream:new();
+
+reverse(#sfd{fd = FD, chunk = Chunk, at = At} = Stream) ->
+   case file:pread(FD, At - Chunk, Chunk) of
+      {ok, Head} ->
+         stream:new(Head, {?MODULE, reverse, Stream#sfd{at = At - Chunk}});
+      eof  ->
+         stream:new();
+      {error, Reason} ->
+         exit(Reason)
+   end.
+
+
+%%
+%%
+-spec write(binary(), #sfd{}) -> datum:either( #sfd{} ).
+
+write(Data, #sfd{fd = FD, size = Size} = Stream) ->
+   [either ||
+      file:write(FD, Data),
+      cats:unit(Stream#sfd{size = Size + size(Data)})
+   ].

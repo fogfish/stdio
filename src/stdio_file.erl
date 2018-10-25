@@ -16,85 +16,75 @@
 %% @doc
 %%   A file streams
 -module(stdio_file).
+
 -compile({parse_transform, category}).
 -include_lib("datum/include/datum.hrl").
+-include("stdio.hrl").
 
 -export([
-   reader/2,
-   reader/1,
-   writer/2,
-   close/1,
-   send/2
+   new/1,
+   free/1,
+   sync/1,
+   read/2,
+   read/1,
+   write/2
 ]).
+
 
 -record(sfd, {
    fd    = undefined :: file:fd(),
    chunk = undefined :: integer()
 }).
 
-%%
-%%
--spec reader(stdio:filename(), file:mode()) -> datum:either( stdio:stream() ).
-
-reader(File, Opts) ->
-   [either ||
-      file:open(File, [raw, binary | Opts]),
-      cats:unit(
-         reader(
-            #sfd{
-               fd    = _, 
-               chunk = lens:get(lens:pair(read_ahead, 64 * 1024), Opts)
-            }
-         )
-      )
-   ].
-
-reader(#sfd{fd = FD, chunk = Chunk} = Stream) ->
-   case file:read(FD, Chunk) of
-      {ok, Head} ->
-         stream:new(Head, {?MODULE, reader, Stream});
-      eof  ->
-         file:close(FD),
-         stream:new();
-      {error, Reason} ->
-         file:close(FD),
-         exit(Reason)
-   end.
 
 %%
 %%
--spec writer(stdio:filename(), file:mode()) -> datum:either( stdio:stream() ).
+-spec new(file:fd()) -> datum:either( stdio:iostream() ).
 
-writer(File, Opts) ->
-   [either ||
-      file:open(File, [raw, binary | Opts]),
-      cats:unit(
-         stream:new(undefined, 
-            {?MODULE, reader, 
-               #sfd{
-                  fd    = _,
-                  chunk = lens:get(lens:c(lens:keylist(1, delayed_write, {delayed_write, 64 * 1024, 2}), lens:t2()), Opts)
-               }
-            }
-         )
-      )
-   ].
+new(FD) ->
+   {ok, #iostream{module = ?MODULE, fd = #sfd{fd = FD}}}.
 
 %%
 %%
--spec close(stdio:stream()) -> datum:either().
+-spec free(#sfd{}) -> datum:either().
 
-close(#stream{tail = {?MODULE, _, #sfd{fd = FD}}}) ->
+free(#sfd{fd = FD}) ->
    file:close(FD).
 
 %%
 %%
--spec send(binary(), stdio:stream()) -> datum:either().
+-spec sync(#sfd{}) -> datum:either().
 
-send(Data, #stream{tail = {?MODULE, _, #sfd{fd = FD}}} = Stream) ->
-   case file:write(FD, Data) of
-      ok ->
-         Stream;
+sync(#sfd{fd = FD}) ->
+   file:sync(FD).
+
+
+%%
+%%
+-spec read(integer() | undefined, #sfd{}) -> stdio:stream().
+
+read(undefined, #sfd{} = FD) ->
+   read(FD#sfd{chunk = ?CONFIG_CHUNK_READER});
+
+read(Chunk, #sfd{} = FD) ->
+   read(FD#sfd{chunk = Chunk}).
+
+read(#sfd{fd = FD, chunk = Chunk} = Stream) ->
+   case file:read(FD, Chunk) of
+      {ok, Head} ->
+         stream:new(Head, {?MODULE, read, Stream});
+      eof  ->
+         stream:new();
       {error, Reason} ->
          exit(Reason)
    end.
+
+%%
+%%
+-spec write(binary(), #sfd{}) -> datum:either( #sfd{} ).
+
+write(Data, #sfd{fd = FD} = Stream) ->
+   [either ||
+      file:write(FD, Data),
+      cats:unit(Stream)
+   ].
