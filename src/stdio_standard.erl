@@ -15,31 +15,48 @@
 %%
 -module(stdio_standard).
 
+-compile({parse_transform, category}).
 -include_lib("datum/include/datum.hrl").
+-include("stdio.hrl").
 
 -export([
-   reader/0,
-   reader/1,
-   writer/0,
-   send/2
+   new/0,
+   free/1,
+   read/2,
+   write/2
 ]).
 
 %%
 %%
--spec reader() -> datum:either( stdio:stream() ).
--spec reader(integer()) -> datum:either( stdio:stream() ).
+-spec new() -> datum:either( stdio:iostream() ).
 
-reader() ->
+new() ->
+   {ok, #iostream{module = ?MODULE}}.
+
+
+%%
+%%
+-spec free(undefined) -> datum:either().
+
+free(undefined) ->
+   ok.
+
+
+%%
+%%
+-spec read(integer() | undefined, undefined) -> stdio:stream().
+
+read(undefined, undefined) ->
    case file:read_line(standard_io) of
       {ok, Head} ->
-         stream:new(Head, fun reader/0);
+         stream:new(Head, {?MODULE, reader, undefined});
       eof ->
          stream:new();
       {error, Reason} ->
          exit(Reason)
-   end.   
+   end;
 
-reader(Chunk) ->
+read(Chunk, undefined) ->
    case file:read(standard_io, Chunk) of
       {ok, Head} ->
          stream:new(Head, {?MODULE, reader, Chunk});
@@ -51,19 +68,10 @@ reader(Chunk) ->
 
 %%
 %%
--spec writer() -> datum:either( stdio:stream() ).
+-spec write(binary(), undefined) -> datum:either( undefined ).
 
-writer() ->
-   stream:new(undefined, {?MODULE, reader, undefined}).
-
-%%
-%%
--spec send(binary(), stdio:stream()) -> datum:either().
-
-send(Data, #stream{tail = {?MODULE, _, undefined}} = Stream) ->
-   case file:write(standard_io, Data) of
-      ok ->
-         Stream;
-      {error, Reason} ->
-         exit(Reason)
-   end.
+write(Data, undefined) ->
+   [either ||
+      file:write(standard_io, Data),
+      cats:unit(undefined)
+   ].

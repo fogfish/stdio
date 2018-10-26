@@ -34,36 +34,37 @@ all() ->
    ].
 
 all_in_one(_) ->
-   [<<"a">>, <<>>, <<"b">>, <<"c">>, <<"d">>] = stream:list(
-      stdio:chunk(
-         stream:build([<<"a\n\nb\nc\nd\n">>])
+   [<<"a">>, <<"b">>, <<"c">>, <<"d">>] = stream:list(
+      stdio:chunk(1,
+         stream:build([<<"abcd">>])
       )
    ).
 
 all_in_few(_) ->
-   [<<"a">>, <<>>, <<"b">>, <<"c">>, <<"d">>] = stream:list(
-      stdio:chunk(
-         stream:build([<<"a\n">>, <<"\nb\n">>, <<"c\nd\n">>])
+   [<<"ab">>, <<"cd">>] = stream:list(
+      stdio:chunk(2,
+         stream:build([<<"a">>, <<"b">>, <<"cd">>])
       )
    ).
 
 all_in_all(_) ->
-   [<<"a">>, <<>>, <<"b">>, <<"c">>, <<"d">>] = stream:list(
-      stdio:chunk(
-         stream:build([<<"a\n">>, <<"\n">>, <<"b\n">>, <<"c\n">>, <<"d\n">>])
+   [<<"a1">>, <<"b2">>, <<"c3">>, <<"d4">>] = stream:list(
+      stdio:chunk(2,
+         stream:build([<<"a1">>, <<"b2">>, <<"c3">>, <<"d4">>])
       )
    ).
 
 one_in_few(_) ->
    [<<"abcd">>, <<"efgh">>] = stream:list(
-      stdio:chunk(
-         stream:build([<<"ab">>, <<"cd\n">>, <<"ef">>, <<"gh\n">>])
+      stdio:chunk(4,
+         stream:build([<<"ab">>, <<"cd">>, <<"ef">>, <<"gh">>])
       )
    ).
 
 one_in_one(_) ->
    [<<"abcd">>] = stream:list(
-      stdio:chunk(
+      stdio:chunk(5,
          stream:build([<<"a">>, <<"b">>, <<"c">>, <<"d">>])
       )
    ).
+

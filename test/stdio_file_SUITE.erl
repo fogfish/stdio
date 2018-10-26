@@ -15,6 +15,8 @@
 %%
 -module(stdio_file_SUITE).
 
+-compile({parse_transform, category}).
+
 -export([all/0]).
 -export([
    read/1,
@@ -31,49 +33,51 @@ all() ->
       NAry =:= 1
    ].
 
+file(Suffix) ->
+   lists:flatten(io_lib:format("/tmp/stdio-file-~s", [Suffix])).
+
 %%
 read(_) ->
-   File = "/tmp/stdio-read",
-   Expect = <<"0123456789">>,
-   ok = file:write_file(File, Expect),
-   {ok, Stream} = stdio:fopen(File, [read]),
-   Expect = stream:head(Stream),
-   stdio:fclose(Stream).
+   {ok, <<"0123456789">>} = [either ||
+      file:write_file(file(read), <<"0123456789">>),
+
+      FD <- stdio:fopen(file(read), [read]),
+      Result <- cats:unit( stream:head(stdio:in(FD)) ),
+      stdio:fclose(FD),
+      cats:unit(Result)
+   ].
 
 %%
 read_with_buffer(_) ->
-   File = "/tmp/stdio-read-with_buffer",
-   Expect = <<"0123456789">>,
-   ok = file:write_file(File, Expect),
-   {ok, Stream} = stdio:fopen(File, [read, {read_ahead, 1}]),
-   <<"0">> = stream:head(Stream),
-   <<"1">> = stream:head(stream:tail(Stream)),
-   <<"2">> = stream:head(stream:tail(Stream)),
-   stdio:fclose(Stream).
+   {ok, [<<"01">>, <<"23">>, <<"45">>, <<"67">>, <<"89">>]} = [either ||
+      file:write_file(file(read_with_buffer), <<"0123456789">>),
+
+      FD <- stdio:fopen(file(read_with_buffer), [read]),
+      Result <- cats:unit( stream:list(stdio:in(2, FD)) ),
+      stdio:fclose(FD),
+      cats:unit(Result)
+   ].
 
 %%
 write(_) ->
-   File = "/tmp/stdio-write",
-   Expect = <<"0123456789">>,
-   {ok, Stream} = stdio:fopen(File, [write]),
-   stdio:send(Expect, Stream),
-   stdio:fclose(Stream),
-   {ok, Expect} = file:read_file(File).
+   {ok, <<"0123456789">>} = [either ||
+      FD <- stdio:fopen(file(write), [write]),
+      cats:unit( stream:build([<<"01">>, <<"23">>, <<"45">>, <<"67">>, <<"89">>]) ),
+      stdio:out(_, FD),
+      stdio:fclose(FD),
+      
+      file:read_file(file(write))
+   ].
 
 %%
 read_write(_) ->
-   FileIn = "/tmp/stdio-read-write-in",
-   FileEg = "/tmp/stdio-read-write-eg",
-   Expect = <<"0123456789">>,
-   ok = file:write_file(FileIn, Expect),
-   {ok, In} = stdio:fopen(FileIn, [read, {read_ahead, 1}]),
-   {ok, Eg} = stdio:fopen(FileEg, [write]),
-   stdio:sink(In, Eg),
-   stdio:fclose(In),
-   stdio:fclose(Eg),
-   {ok, Expect} = file:read_file(FileEg).
+   {ok, <<"0123456789">>} = [either ||
+      file:write_file(file(read_write_in), <<"0123456789">>),
+      In <- stdio:fopen(file(read_write_in), [read]),
+      Eg <- stdio:fopen(file(read_write_eg), [write]),
+      stdio:out(stdio:in(1, In), Eg),
+      stdio:fclose(_),
+      stdio:fclose(In),
 
-
-
-
-
+      file:read_file(file(read_write_eg))
+   ].
