@@ -16,31 +16,23 @@
 -module(stdio_stream_chunk).
 -include_lib("datum/include/datum.hrl").
 
--export([unfold/1]).
+-export([unfold/2]).
 
-unfold(Stream) ->
-   stream:unfold(fun decode/1, {<<>>, ?None, Stream}).
+unfold(N, Stream) ->
+   stream:unfold(fun decode/1, {<<>>, N, Stream}).
 
-decode({<<>>, ?None, ?stream()}) ->
+decode({<<>>, _, ?stream()}) ->
    ?None;
 
-decode({Head, ?None, ?stream() = Stream}) ->
-   {Head, {<<>>, ?None, Stream}};
+decode({Head, N, ?stream() = Stream})
+ when size(Head) < N ->
+   {Head, {<<>>, N, Stream}};
 
-decode({Head, ?None, Stream}) ->
-   case binary:split(stream:head(Stream), [<<$\r, $\n>>, <<$\n>>]) of
-      %% stream head do not have CRLF
-      [Tail] ->
-         decode({<<Head/binary, Tail/binary>>, ?None, stream:tail(Stream)});
-      [HTail, TTail] ->
-         {<<Head/binary, HTail/binary>>, {<<>>, TTail, stream:tail(Stream)}}
-   end;
+decode({Head, N, Stream})
+ when size(Head) < N ->
+   Tail = stream:head(Stream),
+   decode({<<Head/binary, Tail/binary>>, N, stream:tail(Stream)});
 
-decode({Head, Tail, Stream}) ->
-   case binary:split(Tail, [<<$\r, $\n>>, <<$\n>>]) of
-      %% stream tail do not have CRLF
-      [_] ->
-         decode({<<Head/binary, Tail/binary>>, ?None, Stream});
-      [HTail, TTail] ->
-         {<<Head/binary, HTail/binary>>, {<<>>, TTail, Stream}}
-   end.
+decode({Head, N, Stream}) ->
+   <<HHead:N/binary, THead/binary>> = Head,
+   {HHead, {THead, N, Stream}}.

@@ -97,6 +97,9 @@ read({reverse, Chunk}, #sfd{} = FD) ->
 forward(Chunk, #sfd{} = FD) ->
    forward(FD#sfd{chunk = Chunk, at = 0}).
 
+forward(#sfd{at = Size, size = Size}) ->
+   stream:new();
+
 forward(#sfd{fd = FD, chunk = Chunk, at = At} = Stream) ->
    case file:pread(FD, At, Chunk) of
       {ok, Head} ->

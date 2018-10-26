@@ -14,7 +14,7 @@
 %%   limitations under the License.
 %%
 %% @doc
-%%   A file streams
+%%
 -module(stdio_file).
 
 -compile({parse_transform, category}).

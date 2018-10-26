@@ -28,22 +28,11 @@
    fstream/2,
    fclose/1,
    fsync/1,
-
-
-   %% standard streams
    in/1,
    in/2,
    out/2,
-   
-
-   % %% stream i/o
-   % send/2,
-   % sink/2,
-   % snapshot/1,
-
-   %% stream utilities
-   chunk/1,
-   block/2
+   crlf/1,
+   chunk/2
 ]).
 -export_type([
    iostream/0,
@@ -66,7 +55,7 @@
 %% establishes a connection between file descriptor and stream data structure
 -spec fopen(fd()) -> datum:either( iostream() ).
 
-fopen(stdio) ->
+fopen(stdin) ->
    stdio_standard:new();
 fopen(stdout) ->
    stdio_standard:new();
@@ -99,7 +88,10 @@ fclose(#stream{tail = {Module, _, FD}}) ->
    Module:free(FD);
 
 fclose(#iostream{module = Module, fd = FD}) ->
-   Module:free(FD).
+   Module:free(FD);
+
+fclose(#file_descriptor{} = FD) ->
+   file:close(FD).
 
 %%
 %% sync file stream
@@ -113,15 +105,17 @@ fsync(#iostream{module = Module, fd = FD}) ->
 -spec in(iostream()) -> stream().
 -spec in(integer(), iostream()) -> stream().
 
-in(#iostream{} = Stream) ->
-   in(undefined, Stream);
-in(#stream{} = Stream) ->
+in(Stream) ->
    in(undefined, Stream).
 
 in(Chunk, #iostream{module = Module, fd = FD}) ->
    Module:read(Chunk, FD);
+
 in(Chunk, #stream{tail = {Module, _, FD}}) ->
-   Module:read(Chunk, FD).
+   Module:read(Chunk, FD);
+
+in(Chunk, #file_descriptor{} = FD) ->
+   in(Chunk, fopen(FD)).
 
 %%
 %% sink input stream to output
@@ -134,74 +128,24 @@ out(#stream{} = Ingress, #iostream{module = Module, fd = FD} = Egress) ->
    ];
 
 out(?stream(), Egress) ->
-   {ok, Egress}.
+   {ok, Egress};
 
-
-%%
-%% standard output stream
-% -spec out() -> datum:either( stream() ).
-
-% out() ->
-%    stdio_standard:writer().
-
-%%
-%% opening file stream
-% -spec fopen( filename() ) -> datum:either( stream() ).
-% -spec fopen( filename(), file:mode() ) -> datum:either( stream() ).
-
-% fopen(File) ->
-%    fopen(File, []).
-
-% fopen(stdin, Opts) ->
-%    stdio_standard:reader(Opts);
-% fopen(stdout, Opts) ->
-%    stdio_standard:writer(Opts);
-% fopen(File, Opts) ->
-%    fopen(Opts, File, Opts).
-
-% fopen([], File, Opts) ->
-%    stdio_file:reader(File, Opts);
-% fopen([read | _], File, Opts) ->
-%    stdio_file:reader(File, Opts);
-% fopen([write | _], File, Opts) ->
-%    stdio_file:writer(File, Opts);
-% fopen([append | _], File, Opts) ->
-%    stdio_file:writer(File, Opts);
-% fopen([_ | T], File, Opts) ->
-%    fopen(T, File, Opts).
-
-
-%%
-%% cast data into stream
-% -spec send(binary(), stream()) -> stream().
-
-% send(Data, #stream{tail = {Module, _, _}} = Stream) ->
-%    Module:send(Data, Stream).
-
-% %%
-% %% sink input stream to output
-% -spec sink(stream(), stream()) -> stream().
-
-% sink(Ingress, Egress) -> 
-%    stream:fold(fun stdio:send/2, Egress, Ingress).
-
-% %%
-% %% build a stream snapshot
-% -spec snapshot(stream()) -> stream().
-
-% snapshot(#stream{tail = {Module, _, _}} = Stream) ->
-%    Module:snapshot(Stream).
+out(Data, #iostream{module = Module, fd = FD} = Egress) ->
+   [either ||
+      Module:write(Data, FD),
+      cats:unit(Egress#iostream{fd = _})
+   ].
 
 %%
 %% splits stream to chunks separated with CRLF or LF
--spec chunk(stream()) -> stream().
+-spec crlf(stream()) -> stream().
 
-chunk(Stream) ->
-   stdio_stream_chunk:unfold(Stream).
+crlf(Stream) ->
+   stdio_stream_crlf:unfold(Stream).
 
 %%
-%% split stream to block of size 
--spec block(integer(), stream()) -> stream().
+%% split stream to chunk of size 
+-spec chunk(integer(), stream()) -> stream().
 
-block(N, Stream) ->
-   stdio_stream_block:unfold(N, Stream).
+chunk(N, Stream) ->
+   stdio_stream_chunk:unfold(N, Stream).

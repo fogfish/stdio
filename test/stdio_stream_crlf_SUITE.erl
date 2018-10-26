@@ -13,7 +13,7 @@
 %%   See the License for the specific language governing permissions and
 %%   limitations under the License.
 %%
--module(stdio_stream_block_SUITE).
+-module(stdio_stream_crlf_SUITE).
 
 -export([all/0]).
 -export([
@@ -34,37 +34,36 @@ all() ->
    ].
 
 all_in_one(_) ->
-   [<<"a">>, <<"b">>, <<"c">>, <<"d">>] = stream:list(
-      stdio:block(1,
-         stream:build([<<"abcd">>])
+   [<<"a">>, <<>>, <<"b">>, <<"c">>, <<"d">>] = stream:list(
+      stdio:crlf(
+         stream:build([<<"a\n\nb\nc\nd\n">>])
       )
    ).
 
 all_in_few(_) ->
-   [<<"ab">>, <<"cd">>] = stream:list(
-      stdio:block(2,
-         stream:build([<<"a">>, <<"b">>, <<"cd">>])
+   [<<"a">>, <<>>, <<"b">>, <<"c">>, <<"d">>] = stream:list(
+      stdio:crlf(
+         stream:build([<<"a\n">>, <<"\nb\n">>, <<"c\nd\n">>])
       )
    ).
 
 all_in_all(_) ->
-   [<<"a1">>, <<"b2">>, <<"c3">>, <<"d4">>] = stream:list(
-      stdio:block(2,
-         stream:build([<<"a1">>, <<"b2">>, <<"c3">>, <<"d4">>])
+   [<<"a">>, <<>>, <<"b">>, <<"c">>, <<"d">>] = stream:list(
+      stdio:crlf(
+         stream:build([<<"a\n">>, <<"\n">>, <<"b\n">>, <<"c\n">>, <<"d\n">>])
       )
    ).
 
 one_in_few(_) ->
    [<<"abcd">>, <<"efgh">>] = stream:list(
-      stdio:block(4,
-         stream:build([<<"ab">>, <<"cd">>, <<"ef">>, <<"gh">>])
+      stdio:crlf(
+         stream:build([<<"ab">>, <<"cd\n">>, <<"ef">>, <<"gh\n">>])
       )
    ).
 
 one_in_one(_) ->
    [<<"abcd">>] = stream:list(
-      stdio:block(5,
+      stdio:crlf(
          stream:build([<<"a">>, <<"b">>, <<"c">>, <<"d">>])
       )
    ).
-
