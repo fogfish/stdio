@@ -39,9 +39,9 @@ file(Suffix) ->
 %%
 read(_) ->
    {ok, <<"0123456789">>} = [either ||
-      file:write_file(file(?FUNCTION_NAME), <<"0123456789">>),
+      file:write_file(file(read), <<"0123456789">>),
 
-      FD <- stdio:fopen(file(?FUNCTION_NAME), [read]),
+      FD <- stdio:fopen(file(read), [read]),
       Result <- cats:unit( stream:head(stdio:in(FD)) ),
       stdio:fclose(FD),
       cats:unit(Result)
@@ -50,9 +50,9 @@ read(_) ->
 %%
 read_with_buffer(_) ->
    {ok, [<<"01">>, <<"23">>, <<"45">>, <<"67">>, <<"89">>]} = [either ||
-      file:write_file(file(?FUNCTION_NAME), <<"0123456789">>),
+      file:write_file(file(read_with_buffer), <<"0123456789">>),
 
-      FD <- stdio:fopen(file(?FUNCTION_NAME), [read]),
+      FD <- stdio:fopen(file(read_with_buffer), [read]),
       Result <- cats:unit( stream:list(stdio:in(2, FD)) ),
       stdio:fclose(FD),
       cats:unit(Result)
@@ -61,19 +61,19 @@ read_with_buffer(_) ->
 %%
 write(_) ->
    {ok, <<"0123456789">>} = [either ||
-      FD <- stdio:fopen(file(?FUNCTION_NAME), [write]),
+      FD <- stdio:fopen(file(write), [write]),
       cats:unit( stream:build([<<"01">>, <<"23">>, <<"45">>, <<"67">>, <<"89">>]) ),
       stdio:out(_, FD),
       stdio:fclose(FD),
       
-      file:read_file(file(?FUNCTION_NAME))
+      file:read_file(file(write))
    ].
 
 %%
 read_write(_) ->
    {ok, <<"0123456789">>} = [either ||
-      file:write_file(file(?FUNCTION_NAME), <<"0123456789">>),
-      In <- stdio:fopen(file(?FUNCTION_NAME), [read]),
+      file:write_file(file(read_write_in), <<"0123456789">>),
+      In <- stdio:fopen(file(read_write_in), [read]),
       Eg <- stdio:fopen(file(read_write_eg), [write]),
       stdio:out(stdio:in(1, In), Eg),
       stdio:fclose(_),

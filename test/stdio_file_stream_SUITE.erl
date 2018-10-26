@@ -44,9 +44,9 @@ file(Suffix) ->
 %%
 forward(_) ->
    {ok, [<<"01">>, <<"23">>, <<"45">>, <<"67">>, <<"89">>]} = [either ||
-      file:write_file(file(?FUNCTION_NAME), <<"0123456789">>),
+      file:write_file(file(forward), <<"0123456789">>),
 
-      FD <- stdio:fstream(file(?FUNCTION_NAME), []),
+      FD <- stdio:fstream(file(forward), []),
       Result <- cats:unit( stream:list(stdio:in({forward, 2}, FD)) ),
       stdio:fclose(FD),
       cats:unit(Result)
@@ -56,9 +56,9 @@ forward(_) ->
 %%
 reverse(_) ->
    {ok, [<<"89">>, <<"67">>, <<"45">>, <<"23">>, <<"01">>]} = [either ||
-      file:write_file(file(?FUNCTION_NAME), <<"0123456789">>),
+      file:write_file(file(reverse), <<"0123456789">>),
 
-      FD <- stdio:fstream(file(?FUNCTION_NAME), []),
+      FD <- stdio:fstream(file(reverse), []),
       Result <- cats:unit( stream:list(stdio:in({reverse, 2}, FD)) ),
       stdio:fclose(FD),
       cats:unit(Result)
@@ -68,35 +68,35 @@ reverse(_) ->
 %%
 append(_) ->
    {ok, <<"0123456789abcdefghik">>} = [either ||
-      file:write_file(file(?FUNCTION_NAME), <<"0123456789">>),
+      file:write_file(file(append), <<"0123456789">>),
 
-      FD1 <- stdio:fstream(file(?FUNCTION_NAME), []),
+      FD1 <- stdio:fstream(file(append), []),
       FD2 <- stdio:out(<<"abcdefghik">>, FD1),
       stdio:fclose(FD2),
 
-      file:read_file(file(?FUNCTION_NAME))
+      file:read_file(file(append))
    ].
 
 %%
 %%
 create(_) ->
    {ok, <<"0123456789abcdefghik">>} = [either ||
-      file:delete(file(?FUNCTION_NAME)),
+      file:delete(file(create)),
 
-      FD1 <- stdio:fstream(file(?FUNCTION_NAME), []),
+      FD1 <- stdio:fstream(file(create), []),
       FD2 <- stdio:out(stream:build([<<"0123456789">>, <<"abcdefghik">>]), FD1),
       stdio:fclose(FD2),
 
-      file:read_file(file(?FUNCTION_NAME))
+      file:read_file(file(create))
    ].
 
 %%
 %%
 snapshot_forward(_) ->
    {ok, [<<"01">>, <<"23">>, <<"45">>, <<"67">>, <<"89">>]} = [either ||
-      file:write_file(file(?FUNCTION_NAME), <<"0123456789">>),
+      file:write_file(file(snapshot_forward), <<"0123456789">>),
 
-      FD1 <- stdio:fstream(file(?FUNCTION_NAME), []),
+      FD1 <- stdio:fstream(file(snapshot_forward), []),
       FD2 <- stdio:out(<<"abcdefghik">>, FD1),
       Result <- cats:unit( stream:list(stdio:in({forward, 2}, FD1)) ),
       stdio:fclose(FD2),
@@ -108,9 +108,9 @@ snapshot_forward(_) ->
 %%
 snapshot_forward_whole(_) ->
    {ok, [<<"01">>, <<"23">>, <<"45">>, <<"67">>, <<"89">>, <<"ab">>, <<"cd">>, <<"ef">>, <<"gh">>, <<"ik">>]} = [either ||
-      file:write_file(file(?FUNCTION_NAME), <<"0123456789">>),
+      file:write_file(file(snapshot_forward_whole), <<"0123456789">>),
 
-      FD1 <- stdio:fstream(file(?FUNCTION_NAME), []),
+      FD1 <- stdio:fstream(file(snapshot_forward_whole), []),
       FD2 <- stdio:out(<<"abcdefghik">>, FD1),
       cats:unit( stream:list(stdio:in({forward, 2}, FD1)) ),
       Result <- cats:unit( stream:list(stdio:in({forward, 2}, FD2)) ),
@@ -123,9 +123,9 @@ snapshot_forward_whole(_) ->
 %%
 snapshot_reverse(_) ->
    {ok, [<<"89">>, <<"67">>, <<"45">>, <<"23">>, <<"01">>]} = [either ||
-      file:write_file(file(?FUNCTION_NAME), <<"0123456789">>),
+      file:write_file(file(snapshot_reverse), <<"0123456789">>),
 
-      FD1 <- stdio:fstream(file(?FUNCTION_NAME), []),
+      FD1 <- stdio:fstream(file(snapshot_reverse), []),
       FD2 <- stdio:out(<<"abcdefghik">>, FD1),
       Result <- cats:unit( stream:list(stdio:in({reverse, 2}, FD1)) ),
       stdio:fclose(FD2),
@@ -137,9 +137,9 @@ snapshot_reverse(_) ->
 %%
 snapshot_reverse_whole(_) ->
    {ok, [<<"ik">>, <<"gh">>, <<"ef">>, <<"cd">>, <<"ab">>, <<"89">>, <<"67">>, <<"45">>, <<"23">>, <<"01">>]} = [either ||
-      file:write_file(file(?FUNCTION_NAME), <<"0123456789">>),
+      file:write_file(file(snapshot_reverse_whole), <<"0123456789">>),
 
-      FD1 <- stdio:fstream(file(?FUNCTION_NAME), []),
+      FD1 <- stdio:fstream(file(snapshot_reverse_whole), []),
       FD2 <- stdio:out(<<"abcdefghik">>, FD1),
       cats:unit( stream:list(stdio:in({reverse, 2}, FD1)) ),
       Result <- cats:unit( stream:list(stdio:in({reverse, 2}, FD2)) ),
