@@ -80,9 +80,8 @@ append(_) ->
 %%
 %%
 create(_) ->
+   file:delete(file(create)),
    {ok, <<"0123456789abcdefghik">>} = [either ||
-      file:delete(file(create)),
-
       FD1 <- stdio:fstream(file(create), []),
       FD2 <- stdio:out(stream:build([<<"0123456789">>, <<"abcdefghik">>]), FD1),
       stdio:fclose(FD2),
