@@ -134,7 +134,10 @@ out(Data, #iostream{module = Module, fd = FD} = Egress) ->
    [either ||
       Module:write(Data, FD),
       cats:unit(Egress#iostream{fd = _})
-   ].
+   ];
+
+out(Ingress, #file_descriptor{} = FD) ->
+   out(Ingress, fopen(FD)).
 
 %%
 %% splits stream to chunks separated with CRLF or LF

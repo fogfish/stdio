@@ -63,11 +63,13 @@ sync(#sfd{fd = FD}) ->
 %%
 -spec read(integer() | undefined, #sfd{}) -> stdio:stream().
 
-read(undefined, #sfd{} = FD) ->
-   read(FD#sfd{chunk = ?CONFIG_CHUNK_READER});
+read(undefined, #sfd{fd = FD} = File) ->
+   {ok, _} = file:position(FD, 0),
+   read(File#sfd{chunk = ?CONFIG_CHUNK_READER});
 
-read(Chunk, #sfd{} = FD) ->
-   read(FD#sfd{chunk = Chunk}).
+read(Chunk, #sfd{fd = FD} = File) ->
+   {ok, _} = file:position(FD, 0),
+   read(File#sfd{chunk = Chunk}).
 
 read(#sfd{fd = FD, chunk = Chunk} = Stream) ->
    case file:read(FD, Chunk) of
