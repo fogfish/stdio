@@ -115,7 +115,8 @@ in(Chunk, #stream{tail = {Module, _, FD}}) ->
    Module:read(Chunk, FD);
 
 in(Chunk, #file_descriptor{} = FD) ->
-   in(Chunk, fopen(FD)).
+   {ok, File} = fopen(FD),
+   in(Chunk, File).
 
 %%
 %% sink input stream to output
@@ -137,7 +138,7 @@ out(Data, #iostream{module = Module, fd = FD} = Egress) ->
    ];
 
 out(Ingress, #file_descriptor{} = FD) ->
-   out(Ingress, fopen(FD)).
+   [either || fopen(FD), out(Ingress, _)].
 
 %%
 %% splits stream to chunks separated with CRLF or LF
