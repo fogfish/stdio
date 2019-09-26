@@ -28,19 +28,19 @@ decode({Head, ?None, ?stream() = Stream}) ->
    {Head, {<<>>, ?None, Stream}};
 
 decode({Head, ?None, Stream}) ->
-   case binary:split(stream:head(Stream), [<<$\r, $\n>>, <<$\n>>]) of
+   case binary:split(<<Head/binary, (stream:head(Stream))/binary>>,  [<<$\r, $\n>>, <<$\n>>]) of
       %% stream head do not have CRLF
       [Tail] ->
-         decode({<<Head/binary, Tail/binary>>, ?None, stream:tail(Stream)});
+         decode({Tail, ?None, stream:tail(Stream)});
       [HTail, TTail] ->
-         {<<Head/binary, HTail/binary>>, {<<>>, TTail, stream:tail(Stream)}}
+         {HTail, {<<>>, TTail, stream:tail(Stream)}}
    end;
 
 decode({Head, Tail, Stream}) ->
-   case binary:split(Tail, [<<$\r, $\n>>, <<$\n>>]) of
+   case binary:split(<<Head/binary, Tail/binary>>, [<<$\r, $\n>>, <<$\n>>]) of
       %% stream tail do not have CRLF
-      [_] ->
-         decode({<<Head/binary, Tail/binary>>, ?None, Stream});
+      [HTail] ->
+         decode({HTail, ?None, Stream});
       [HTail, TTail] ->
-         {<<Head/binary, HTail/binary>>, {<<>>, TTail, Stream}}
+         {HTail, {<<>>, TTail, Stream}}
    end.
